@@ -141,16 +141,21 @@ export default {
         (navigator.platform.match("Mac") ? e.metaKey : e.ctrlKey) &&
         (e.key === "S" || e.key === "s")
       ) {
-        let saveFile = dialog.showSaveDialog({
-          title: "保存文件",
-          defaultPath: this.appHeaderTitle,
-          nameFieldLabel: this.appHeaderTitle,
-          properties: ["createDirectory", "showOverwriteConfirmation"],
-          filters: [
-            { name: "markdown", extensions: ["md"] },
-            { name: "html", extensions: ["html"] },
-          ],
-        });
+        let saveFile = dialog.showSaveDialog(
+          {
+            title: "保存文件",
+            defaultPath: this.appHeaderTitle,
+            nameFieldLabel: this.appHeaderTitle,
+            properties: ["createDirectory", "showOverwriteConfirmation"],
+            filters: [
+              { name: "markdown", extensions: ["md"] },
+              { name: "html", extensions: ["html"] },
+            ],
+          },
+          (res) => {
+            console.log("保存成功");
+          }
+        );
 
         // have save
         if (saveFile) {

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu } from "electron";
+import { app, BrowserWindow, Menu, dialog } from "electron";
 import "../renderer/store";
 
 /**
@@ -23,33 +23,11 @@ function createWindow() {
 	 */
 	// 隐藏菜单栏
 	Menu.setApplicationMenu(null);
-	// const { Menu, MenuItem } = require("electron");
-
-	// const menu = new Menu();
-	// menu.append(
-	// 	new MenuItem({
-	// 		label: "Electron",
-	// 		submenu: [
-	// 			{
-	// 				role: "help",
-	// 				accelerator: "I",
-	// 				// process.platform === "darwin"
-	// 				// 	? "Alt+Cmd+I"
-	// 				// 	: "Alt+Shift+I",
-	// 				click: () => {
-	// 					console.log("电子岩石！");
-	// 				},
-	// 			},
-	// 		],
-	// 	})
-	// );
-
-	// Menu.setApplicationMenu(menu);
 
 	mainWindow = new BrowserWindow({
-		height: 400,
+		height: 600,
 		useContentSize: true,
-		width: 450,
+		width: 1050,
 		frame: false,
 	});
 
@@ -59,6 +37,42 @@ function createWindow() {
 		mainWindow = null;
 	});
 }
+
+let ipcMain = require("electron").ipcMain;
+//接收最小化命令
+ipcMain.on("window-min", function () {
+	mainWindow.minimize();
+});
+//接收最大化命令
+ipcMain.on("window-max", function () {
+	if (mainWindow.isMaximized()) {
+		mainWindow.restore();
+	} else {
+		mainWindow.maximize();
+	}
+});
+//接收关闭命令
+ipcMain.on("window-close", function () {
+	let res = dialog.showMessageBox(
+		{
+			type: "question",
+			title: "退出",
+			message: "要保存文件吗？",
+			buttons: ["保存", "不保存", "取消"],
+		},
+		(res) => {
+			if (res == 0) {
+			} else if (res == 1) {
+				mainWindow.close();
+			} else if (res == 2) {
+				console.log("取消关闭");
+			}
+		}
+	);
+
+	console.log(res);
+	// mainWindow.close();
+});
 
 app.on("ready", createWindow);
 

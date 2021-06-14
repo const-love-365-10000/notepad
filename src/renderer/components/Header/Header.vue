@@ -37,7 +37,23 @@ export default {
       this.isMax = !this.isMax;
     },
     close() {
-      ipcRenderer.send("window-close");
+      this.$modal.show(
+        "info",
+        "警告",
+        "是否要保存文件",
+        ["保存", "不保存", "取消"],
+        [
+          () => {
+            console.log("哈哈哈");
+          },
+          () => {
+            ipcRenderer.send("window-close");
+          },
+          () => {
+            this.$modal.close();
+          },
+        ]
+      );
     },
   },
 };

@@ -25,9 +25,9 @@ function createWindow() {
 	Menu.setApplicationMenu(null);
 
 	mainWindow = new BrowserWindow({
-		height: 600,
+		height: 370,
 		useContentSize: true,
-		width: 1050,
+		width: 400,
 		frame: false,
 	});
 
@@ -39,6 +39,19 @@ function createWindow() {
 }
 
 let ipcMain = require("electron").ipcMain;
+
+// 改变窗口大小
+ipcMain.on("changWindowSize", (e, sizeArr) => {
+	// console.log(mainWindow.getContentBounds());
+	// console.log(sizeArr);
+	let nowSize = mainWindow.getContentBounds();
+
+	mainWindow.setContentSize(sizeArr[0], sizeArr[1]);
+	mainWindow.center();
+	// mainWindow.setPosition(nowSize.x + sizeArr[0] / 2, sizeArr[1] + 300, true); //设置窗口横坐标和纵坐标
+	// mainWindow.setBounds(nowSize.x + sizeArr[0]);
+});
+
 //接收最小化命令
 ipcMain.on("window-min", function () {
 	mainWindow.minimize();
@@ -53,24 +66,27 @@ ipcMain.on("window-max", function () {
 });
 //接收关闭命令
 ipcMain.on("window-close", function () {
-	let res = dialog.showMessageBox(
-		{
-			type: "question",
-			title: "退出",
-			message: "要保存文件吗？",
-			buttons: ["保存", "不保存", "取消"],
-		},
-		(res) => {
-			if (res == 0) {
-			} else if (res == 1) {
-				mainWindow.close();
-			} else if (res == 2) {
-				console.log("取消关闭");
-			}
-		}
-	);
+	mainWindow.close();
+	app.quit();
 
-	console.log(res);
+	// 不再使用系统对话框，使用自定义对话框
+	// let res = dialog.showMessageBox(
+	// 	{
+	// 		type: "question",
+	// 		title: "退出",
+	// 		message: "要保存文件吗？",
+	// 		buttons: ["保存", "不保存", "取消"],
+	// 	},
+	// 	(res) => {
+	// 		if (res == 0) {
+	// 		} else if (res == 1) {
+	// 			mainWindow.close();
+	// 		} else if (res == 2) {
+	// 			console.log("取消关闭");
+	// 		}
+	// 	}
+	// );
+
 	// mainWindow.close();
 });
 

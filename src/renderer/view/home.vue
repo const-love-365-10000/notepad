@@ -1,38 +1,50 @@
 <template>
   <div>
     <app-header :title="appHeaderTitle" style=""></app-header>
-    <div class="editorBox">
-      <div class="writeHelpBar">
-        <span
-          ><i
-            class="fas fa-paragraph"
-            style="position: relative"
-            :style="{ top: writeTipOffsetTop + 'px' }"
-          ></i
-        ></span>
-      </div>
-      <div
-        contenteditable="true"
-        id="editor"
-        class="editor"
-        ref="editor"
-        @focus="editorFocus"
-        @blur="editorBlur"
-        @input="editorChange"
-        @click="editorClick"
-        @keydown.ctrl.49="execCommand('formatBlock', 'H1')"
-        @keydown.ctrl.50="execCommand('formatBlock', 'H2')"
-        @keydown.ctrl.51="execCommand('formatBlock', 'H3')"
-        @keydown.ctrl.52="execCommand('formatBlock', 'H4')"
-        @keydown.ctrl.53="execCommand('formatBlock', 'H5')"
-        @keydown.ctrl.54="execCommand('formatBlock', 'H6')"
-      >
-        <span v-if="showPlaceholder" style="color: rgba(0, 0, 0, 0.8)"
-          >记事吧...</span
+    <div class="main">
+      <app-left-menu :show="showLeftMenu"></app-left-menu>
+      <div class="editorBox">
+        <div
+          style="
+            width: 100%;
+            height: calc(100vh - 2rem - 2.5rem);
+            display: flex;
+          "
         >
+          <div class="writeHelpBar">
+            <span
+              ><i
+                class="fas fa-paragraph"
+                style="position: relative; cursor: pointer"
+                :style="{ top: writeTipOffsetTop + 'px' }"
+              ></i
+            ></span>
+          </div>
+          <div
+            contenteditable="true"
+            id="editor"
+            class="editor"
+            ref="editor"
+            @focus="editorFocus"
+            @blur="editorBlur"
+            @input="editorChange"
+            @click="editorClick"
+            @keydown.ctrl.49="execCommand('formatBlock', 'H1')"
+            @keydown.ctrl.50="execCommand('formatBlock', 'H2')"
+            @keydown.ctrl.51="execCommand('formatBlock', 'H3')"
+            @keydown.ctrl.52="execCommand('formatBlock', 'H4')"
+            @keydown.ctrl.53="execCommand('formatBlock', 'H5')"
+            @keydown.ctrl.54="execCommand('formatBlock', 'H6')"
+          >
+            <span v-if="showPlaceholder" style="color: rgba(0, 0, 0, 0.8)"
+              >记事吧...</span
+            >
+          </div>
+        </div>
+
+        <app-footer :count="writeWords"></app-footer>
       </div>
     </div>
-    <app-footer :words="writeWords"></app-footer>
   </div>
 </template>
 <script>
@@ -40,35 +52,87 @@ const { dialog } = require("electron").remote;
 const fs = require("fs");
 import AppHeader from "@/components/Header/Header.vue";
 import AppFooter from "@/components/Footer/Footer.vue";
+import AppLeftMenu from "@/components/LeftMenu/LeftMenu.vue";
+import { ipcMain } from "electron";
+let ipcRenderer = require("electron").ipcRenderer;
 
 export default {
   name: "Home",
-  components: { AppHeader, AppFooter },
+  components: { AppHeader, AppFooter, AppLeftMenu },
   data() {
     return {
+      showLeftMenu: false,
       appHeaderTitle: "未命名-1",
       showPlaceholder: true,
       writeTipOffsetTop: 22,
-      writeWords: 0,
+      writeWords: {
+        char: 0,
+        paragraph: 0,
+        word: 0,
+      },
+      editorHtml: null,
     };
+  },
+  computed: {
+    // editorHtml() {
+    //   console.log(this.$refs.editor);
+    //   // if (this.$refs.editor) {
+    //   return this.$refs.editor || null;
+    //   // }
+    // },
   },
   created() {
     window.addEventListener("keydown", this.handleSaveFile, true);
+
+    // model
+    this.$on("changeModel", function (val) {
+      console.log(val);
+      if (val === 0) {
+        this.showLeftMenu = false;
+        ipcRenderer.send("changWindowSize", [400, 370]);
+      } else if (val === 1) {
+        this.showLeftMenu = true;
+        ipcRenderer.send("changWindowSize", [1004, 710]);
+      }
+    });
   },
   methods: {
     editorChange(e) {
-      this.writeWords = this.$refs.editor.innerText.length;
+      this.editorHtml = this.$refs.editor.innerHTML;
+      this.$store.dispatch("setEditorHtml", this.$refs.editor.innerHTML);
+
+      //  统计数字
+      // this.writeWords = this.$refs.editor.innerText.length;
+      let countChar = 0;
+      let countParagraph = 0;
+      for (let i in this.$refs.editor.innerText) {
+        if (
+          /[0-9a-zA-Z\u4e00-\u9fa5]/g.test(
+            this.$refs.editor.innerText.charAt(i)
+          )
+        ) {
+          countChar++;
+        }
+        if (/\n/g.test(this.$refs.editor.innerText.charAt(i))) {
+          countParagraph++;
+        }
+      }
+      this.writeWords.char = countChar;
+      this.writeWords.paragraph = countParagraph;
+      console.log(countParagraph);
 
       let selection = document.getSelection();
 
       console.log(selection);
 
       if (selection.baseNode.offsetTop) {
+        // 回车点击的时候
         this.writeTipOffsetTop =
           selection.baseNode.offsetTop - 32 > 0
             ? selection.baseNode.offsetTop - 30
             : 22;
       } else {
+        // 输入的时候
         this.writeTipOffsetTop =
           selection.baseNode.parentNode.offsetTop - 32 > 0
             ? selection.baseNode.parentNode.offsetTop - 30
@@ -196,24 +260,32 @@ export default {
       }
     },
   },
+  watch: {},
 };
 </script>
 
 <style lang="scss" >
+.main {
+  display: flex;
+}
 .editor {
   // 100vh - paddingTop - headerHeight - footerHeight
-  min-height: calc(100vh - 1em - 2rem - 1.5rem);
-  width: 100%;
+  min-height: calc(100vh - 1em - 2rem - 2.5rem);
+  width: calc(100vw - 2rem);
   outline: none;
   padding: 1em 2rem 0 0;
   font-size: 1.2rem;
   color: #455;
   font-weight: 300;
   word-break: break-all;
+  overflow-y: auto;
 
   // background: url("/static/img/write.svg") no-repeat;
 
   &::selection {
+    background-color: #dddddd;
+  }
+  & *::selection {
     background-color: #dddddd;
   }
 
@@ -228,16 +300,22 @@ export default {
 }
 
 .writeHelpBar {
+  display: flex;
+  justify-content: center;
+
   width: 2rem;
 }
 .editorBox {
-  overflow-y: auto;
+  overflow-y: hidden;
   overflow-x: hidden;
   height: 100%;
   background: #f7f7f7;
   width: 100%;
   display: flex;
+  flex-direction: column;
+}
 
+.editor {
   /*滚动条整体部分,必须要设置 , 高宽分别对应横竖滚动条的尺寸*/
   &::-webkit-scrollbar {
     width: 10px;

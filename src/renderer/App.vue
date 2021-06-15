@@ -9,7 +9,17 @@ export default {
   name: "notepad",
 };
 </script>
+<script>
+export default {
+  name: "app",
 
+  data() {
+    return {};
+  },
+
+  methods: {},
+};
+</script>
 <style>
 /* CSS */
 html,

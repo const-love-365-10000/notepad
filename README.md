@@ -18,3 +18,6 @@ Electron-package使用方法：
 
 `electron-packager . notepad  --win --out ./dist --arch=x64 --app-version=0.0.1 --electron-version=2.0.0`
 
+可以用的
+electron-packager . fukaiitapp --out fukaiitapp --arch=x64 --overwrite
+electron-packager . notepad --out ../dist --arch=x64 --overwrite

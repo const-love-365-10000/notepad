@@ -1,8 +1,12 @@
 <template>
-  <div>
+  <div @mousedown="appMousedown">
     <app-header :title="appHeaderTitle" style=""></app-header>
     <div class="main">
-      <app-left-menu :show="showLeftMenu"></app-left-menu>
+      <app-left-menu
+        ref="leftMenu"
+        :show="showLeftMenu"
+        @openFile="openFile"
+      ></app-left-menu>
       <div class="editorBox">
         <div
           style="
@@ -84,7 +88,7 @@ export default {
   created() {
     window.addEventListener("keydown", this.handleSaveFile, true);
 
-    // model
+    // model change
     this.$on("changeModel", function (val) {
       console.log(val);
       if (val === 0) {
@@ -205,21 +209,17 @@ export default {
         (navigator.platform.match("Mac") ? e.metaKey : e.ctrlKey) &&
         (e.key === "S" || e.key === "s")
       ) {
-        let saveFile = dialog.showSaveDialog(
-          {
-            title: "保存文件",
-            defaultPath: this.appHeaderTitle,
-            nameFieldLabel: this.appHeaderTitle,
-            properties: ["createDirectory", "showOverwriteConfirmation"],
-            filters: [
-              { name: "markdown", extensions: ["md"] },
-              { name: "html", extensions: ["html"] },
-            ],
-          },
-          (res) => {
-            console.log("保存成功");
-          }
-        );
+        let saveFile = dialog.showSaveDialog({
+          title: "保存文件",
+          defaultPath: "./" + this.appHeaderTitle,
+          nameFieldLabel: this.appHeaderTitle,
+          properties: ["createDirectory", "showOverwriteConfirmation"],
+          filters: [
+            { name: "markdown", extensions: ["md"] },
+            { name: "txt", extensions: ["txt"] },
+            { name: "html", extensions: ["html"] },
+          ],
+        });
 
         // have save
         if (saveFile) {
@@ -238,11 +238,11 @@ export default {
                 }
               }
             );
-          } else if (/\.html/.exec(saveFile)) {
+          } else if (saveFile.toString().indexOf(".html") !== -1) {
             this.appHeaderTitle = /\\{1}.{0,12}\.html$/
               .exec(saveFile)[0]
               .replace(/\\/, "");
-
+            console.log(saveFile);
             let file = fs.writeFile(
               saveFile,
               this.$refs.editor.innerHTML,
@@ -257,7 +257,19 @@ export default {
           // .replace(/\.*md/, "");
         }
         return;
+      } else {
+        return;
       }
+    },
+    openFile(fileContent) {
+      // 打开md
+      // this.$refs.editor.innerHTML = fileContent;
+      // 打开h5
+      this.$refs.editor.innerText = fileContent;
+    },
+    appMousedown(e) {
+      console.log("appMousedown");
+      this.$refs.leftMenu.notifyRightClickMenu(e);
     },
   },
   watch: {},

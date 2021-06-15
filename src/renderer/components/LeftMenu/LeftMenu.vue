@@ -9,14 +9,16 @@
       <div class="fileBoxBody">
         <ul
           class="fileModel"
+          :class="showFileModel ? 'fadeIn' : ''"
           v-show="showFileModel"
-          :style="{ width: fileModel ? '100%' : '0' }"
+          @mousedown="fileListMousedown"
         >
           <li
             v-for="i in fileList"
             :key="i.name"
             class="fileItem"
             @click="openFile(i)"
+            :title="i.name"
           >
             <i class="fas" :class="i.icon" style="margin: 0 5px"></i>
             {{ i.name }}
@@ -24,8 +26,8 @@
         </ul>
         <ul
           class="outlineModel"
+          :class="!showFileModel ? 'fadeIn' : ''"
           v-show="!showFileModel"
-          :style="{ width: !fileModel ? '100%' : '0' }"
         >
           <li
             v-for="i in outlineList"
@@ -37,10 +39,21 @@
         </ul>
       </div>
     </div>
+    <right-click-menu
+      class="RightClickMenu"
+      v-show="fileListRightMenuShow"
+      :buttons="RightClickMenuButtons"
+      :style="{
+        left: fileListRightMenuPosition.x + 'px',
+        top: fileListRightMenuPosition.y + 'px',
+      }"
+    ></right-click-menu>
   </div>
 </template>
 <script>
 const fs = require("fs");
+import { openFile } from "@/util/openFile.js";
+import rightClickMenu from "@/components/rightClickMenu/rightClickMenu";
 export default {
   name: "AppLeftMenu",
   props: {
@@ -51,22 +64,40 @@ export default {
       default: null,
     },
   },
+  components: { rightClickMenu },
   data() {
     return {
       fileList: [],
-      showFileModel: true,
+      showFileModel: true, // 控制目录和大纲的显示
       outlineList: null,
       fileModel: true, // true is  file or false is outline
       filePath: "./",
+      RightClickMenuButtons: [
+        { name: "打开", value: 0 },
+        { name: "新建", value: 1 },
+        { name: "删除", value: 2 },
+      ],
+      fileListRightMenuShow: false,
+      fileListRightMenuPosition: { x: 0, y: 0 },
     };
   },
   computed: {},
   created() {
     // this.fileList = fs.readdirSync("./", { withFileTypes: true });
-    this.handleFile(this.filePath);
+    this.handleFile(this.filePath, "clickDir");
+
+    this.$on("appMousedown", function (e) {
+      console.log(885);
+      if (e) {
+        console.log(e);
+      }
+    });
   },
   methods: {
-    handleFile(path) {
+    handleFile(path, type) {
+      if (type === "clickDir" && this.fileList && this.fileList.length > 0)
+        return;
+
       fs.readdir(path, { withFileTypes: true }, (err, data) => {
         if (err) {
           console.error(err);
@@ -163,14 +194,21 @@ export default {
         }
         this.handleFile(this.filePath);
       } else if (item.type === "file") {
-        console.log("888");
-        fs.readFile(this.filePath + item.name, "utf-8", (err, data) => {
-          if (err) {
-            console.log(err);
-            return;
-          }
-          console.log(data);
+        openFile(this.filePath + item.name).then((res) => {
+          console.log(res);
+          this.$emit("openFile", res);
         });
+        // console.log(data);
+        // this.$emit("openFile", JSON.stringify(data, null, 4));
+        // fs.readFile(this.filePath + item.name, "utf-8", (err, data) => {
+        //   if (err) {
+        //     console.log(err);
+        //     return;
+        //   }
+        //   console.log(data);
+        //   // this.$store.dispatch("setEditorHtml", data);
+        //   this.$emit("openFile", JSON.stringify(data, null, 4));
+        // });
       }
     },
     changeFileModel(type) {
@@ -178,8 +216,26 @@ export default {
         this.handleOutline();
         this.fileModel = false;
       } else {
-        this.handleFile(this.filePath);
+        this.handleFile(this.filePath, "clickDir");
         this.fileModel = true;
+      }
+    },
+    fileListMousedown(e) {
+      console.log(e.button);
+
+      if (e.button == 2) {
+        this.fileListRightMenuShow = true;
+        this.fileListRightMenuPosition.x = e.clientX + 10;
+        this.fileListRightMenuPosition.y = e.clientY - 20;
+        // 点击了鼠标右键
+      }
+    },
+    notifyRightClickMenu(e) {
+      console.log(e);
+
+      if (e.target.className !== "fileItem") {
+        // 如果点击的不是文件列表
+        this.fileListRightMenuShow = false;
       }
     },
   },
@@ -188,8 +244,9 @@ export default {
     fileModel(val) {
       setTimeout(() => {
         this.showFileModel = val;
-      }, 510);
+      }, 10);
     },
+
     // filePath(val) {
     //   console.log(val, val.match(/\//g).length);
     //   if (val.match(/\//g).length > 1) {
@@ -206,6 +263,8 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+$fileBoxWidth: calc(250px - 60px + 10px);
+$fileBoxBodyHeight: calc(100vh - 2rem - 25px - 2em);
 .leftMenu {
   width: 250px;
   min-height: 100vh;
@@ -219,7 +278,7 @@ export default {
     background: #454b50;
   }
   .fileBox {
-    width: calc(250px - 60px);
+    width: $fileBoxWidth;
     .fileBoxHeader {
       display: flex;
       justify-content: space-around;
@@ -232,6 +291,31 @@ export default {
       }
     }
     .fileBoxBody {
+      overflow-y: auto;
+      overflow-x: hidden;
+      height: $fileBoxBodyHeight;
+      width: $fileBoxWidth;
+
+      &::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+      }
+
+      &::-webkit-scrollbar-track {
+        background: #efefef;
+        border-radius: 5px;
+      }
+      &::-webkit-scrollbar-thumb {
+        height: 5px;
+        // background-color: #535353;
+        background: #dbdcdc;
+        border-radius: 5px;
+      }
+      &::-webkit-scrollbar-button {
+        height: 0;
+        background-color: #0e2531;
+      }
+
       ul {
         list-style: none;
       }
@@ -240,6 +324,7 @@ export default {
         transition: width 0.4s;
         overflow: hidden;
         padding: 0;
+        transition: all 0.4s;
       }
       .outlineItem:hover,
       .fileItem:hover {
@@ -248,12 +333,15 @@ export default {
         color: #fff;
       }
       .fileItem {
-        height: 2rem;
-        display: flex;
-        align-items: center;
+        // height: 2rem;
+        // display: flex;
+        // align-items: center;
+        vertical-align: middle;
         cursor: pointer;
-
-        padding: 0 1.5em;
+        padding: 0.65em 1.5em;
+        overflow-x: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
       }
 
       .outlineItem-h1 {
@@ -275,6 +363,40 @@ export default {
         font-size: 0.9rem;
       }
     }
+  }
+}
+
+.RightClickMenu {
+  width: 250px;
+  position: fixed;
+}
+
+.showByFlex {
+  display: flex;
+}
+.hideByFlex {
+  display: none;
+}
+.fadeOut {
+  animation: fadeOut 0.3s;
+}
+.fadeIn {
+  animation: fadeIn 0.2s;
+}
+@keyframes fadeOut {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
   }
 }
 </style>

@@ -1,6 +1,7 @@
 const state = {
 	main: 0,
 	editorHtml: null,
+	appMousedown: 0,
 };
 
 const mutations = {
@@ -13,6 +14,9 @@ const mutations = {
 	setEditorHtml(state, editorHtml) {
 		state.editorHtml = editorHtml;
 	},
+	setAppMousedown(state, appMousedown) {
+		state.appMousedown = appMousedown;
+	},
 };
 
 const actions = {
@@ -22,6 +26,9 @@ const actions = {
 	},
 	setEditorHtml({ commit }, editorHtml) {
 		commit("setEditorHtml", editorHtml);
+	},
+	setAppMousedown({ commit }, appMousedown) {
+		commit("setAppMousedown", appMousedown);
 	},
 };
 

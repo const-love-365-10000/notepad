@@ -6,6 +6,12 @@
 - Electron-vue
 - Electron-package
 
+## 使用的库
+watch
+Watch 是一个监听文件夹改变的Node.JS模块  （不再使用）
+https://github.com/mikeal/watch
+
+
 
 
 ## 编译

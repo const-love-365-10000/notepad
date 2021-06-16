@@ -1,4 +1,7 @@
 import { app, BrowserWindow, Menu, dialog } from "electron";
+import fsListMenu from "../renderer/util/fsListMenu.js";
+let ipcMain = require("electron").ipcMain;
+import store from "../renderer/store/index";
 import "../renderer/store";
 
 /**
@@ -38,18 +41,52 @@ function createWindow() {
 	});
 }
 
-let ipcMain = require("electron").ipcMain;
+ipcMain.on("fileMenu", (e, res) => {
+	console.log(res);
+	if (res.type === "delete") {
+		fsListMenu
+			.deleteFile(res.event.target)
+			.then(() => {
+				console.log("文件删除成功");
+				e.sender.send("updateFileList");
+			})
+			.catch((err) => {
+				console.log("删除失败，原因：", err);
+			});
+	}
+});
+
+ipcMain.on("createFile", (e, res) => {
+	console.log(res);
+	if (res.type === "file") {
+		fsListMenu
+			.createFile(res.filePath + res.newFileName)
+			.then(() => {
+				console.log("文件新建成功");
+				e.sender.send("updateFileList", { type: "createFileSuccess" });
+			})
+			.catch((err) => {
+				console.log("失败，原因：", err);
+			});
+	} else if (res.type === "dir") {
+		fsListMenu
+			.createDir(res.filePath)
+			.then(() => {
+				console.log("文件新建成功");
+				e.sender.send("updateFileList");
+			})
+			.catch((err) => {
+				console.log("失败，原因：", err);
+			});
+	}
+});
 
 // 改变窗口大小
 ipcMain.on("changWindowSize", (e, sizeArr) => {
-	// console.log(mainWindow.getContentBounds());
-	// console.log(sizeArr);
 	let nowSize = mainWindow.getContentBounds();
 
 	mainWindow.setContentSize(sizeArr[0], sizeArr[1]);
 	mainWindow.center();
-	// mainWindow.setPosition(nowSize.x + sizeArr[0] / 2, sizeArr[1] + 300, true); //设置窗口横坐标和纵坐标
-	// mainWindow.setBounds(nowSize.x + sizeArr[0]);
 });
 
 //接收最小化命令

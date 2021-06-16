@@ -1,6 +1,13 @@
 <template>
   <div class="leftMenu" :style="{ width: show ? '400px' : '0' }">
-    <div class="menu"></div>
+    <div class="menu">
+      <ul>
+        <li><i class="fas fa-folder"></i></li>
+        <li><i class="fas fa-search"></i></li>
+        <li><i class="fas fa-project-diagram"></i></li>
+        <li><i class="fas fa-code-branch"></i></li>
+      </ul>
+    </div>
     <div class="fileBox">
       <div class="fileBoxHeader">
         <div @click="changeFileModel('file')">目录</div>
@@ -14,14 +21,30 @@
           @mousedown="fileListMousedown"
         >
           <li
-            v-for="i in fileList"
+            v-for="(i, index) in fileList"
             :key="i.name"
+            :data-index="index"
             class="fileItem"
             @click="openFile(i)"
             :title="i.name"
           >
-            <i class="fas" :class="i.icon" style="margin: 0 5px"></i>
+            <i
+              :class="i.icon"
+              :style="{ color: i.color }"
+              style="margin: 0 5px"
+            ></i>
             {{ i.name }}
+          </li>
+          <li class="fileItem inputFileName" v-if="newFile">
+            <i class="fas" :class="newFile.icon" style="margin: 0 5px"></i>
+            <input
+              type="text"
+              class="inputText"
+              v-model="newFileName"
+              autofocus="autofocus"
+              :placeholder="'名称'"
+              @keypress.enter="createFile"
+            />
           </li>
         </ul>
         <ul
@@ -52,8 +75,15 @@
 </template>
 <script>
 const fs = require("fs");
+
 import { openFile } from "@/util/openFile.js";
 import rightClickMenu from "@/components/rightClickMenu/rightClickMenu";
+let ipcRenderer = require("electron").ipcRenderer;
+const Electron = require("electron");
+const remote = Electron.remote;
+const Menu = remote.Menu;
+const MenuItem = remote.MenuItem;
+
 export default {
   name: "AppLeftMenu",
   props: {
@@ -79,25 +109,110 @@ export default {
       ],
       fileListRightMenuShow: false,
       fileListRightMenuPosition: { x: 0, y: 0 },
+
+      menu: null,
+      rightMessage: null,
+      newFileName: "",
+      newFile: null,
+      fileListRightItems: [
+        new MenuItem({
+          label: "新建文件",
+          type: "normal",
+          role: "fileMenu",
+          click: (e, focusedWindow, focusedWebContents) => {
+            this.newFile = {};
+            this.newFile.type = "file";
+            this.newFile.icon = "fa-file";
+            this.newFile.filePath = this.$store.state.global.filePath;
+          },
+        }),
+        new MenuItem({
+          label: "新建目录",
+          role: "fileMenu",
+          click: (e, focusedWindow, focusedWebContents) => {
+            console.log(e, focusedWindow, focusedWebContents);
+          },
+        }),
+        new MenuItem({
+          label: "复制",
+          role: "copy",
+          click: () => {},
+        }),
+        new MenuItem({
+          label: "剪切",
+          role: "cut",
+          click: () => {},
+        }),
+        new MenuItem({
+          label: "粘贴",
+          role: "paste",
+          click: () => {},
+        }),
+
+        new MenuItem({
+          label: "删除",
+          role: "fileMenu",
+          type: "normal",
+          click: (e) => {
+            ipcRenderer.send("fileMenu", {
+              type: "delete",
+              event: this.rightMessage,
+            });
+          },
+        }),
+      ],
     };
   },
   computed: {},
   created() {
-    // this.fileList = fs.readdirSync("./", { withFileTypes: true });
-    this.handleFile(this.filePath, "clickDir");
+    // 初始化文件列表右键次啊单
+    this.initMenu();
 
-    this.$on("appMousedown", function (e) {
-      console.log(885);
-      if (e) {
-        console.log(e);
+    // 监听主进程——更新文件列表
+    ipcRenderer.on("updateFileList", (e, res) => {
+      console.log(e, res);
+      if (res && res.type === "createFileSuccess") {
+        this.newFile = null;
+        this.newFileName = "";
       }
+      this.handleFile(this.$store.state.global.filePath);
     });
+
+    // watch.watchTree(this.$store.state.global.filePath, (f, curr, prev) => {
+    //   if (typeof f == "object" && prev === null && curr === null) {
+    //     // Finished walking the tree
+    //     console.log("watchTree");
+    //   } else if (prev === null) {
+    //     // f is a new file
+    //   } else if (curr.nlink === 0) {
+    //     // f was removed
+    //     console.log("删除了987");
+    //   } else {
+    //     // f was changed
+    //   }
+    // });
+
+    // get目录列表
+    // this.fileList = fs.readdirSync("./", { withFileTypes: true });
+    this.handleFile(this.filePath);
   },
   methods: {
-    handleFile(path, type) {
-      if (type === "clickDir" && this.fileList && this.fileList.length > 0)
-        return;
+    initMenu() {
+      this.menu = new Menu();
+      // for(let i of this.fileListRightItems){
+      //   this.mu
+      // }
+      this.menu = Menu.buildFromTemplate(this.fileListRightItems);
+      // this.menu.setApplicationMenu(this.fileListRightItems);
+    },
 
+    // 显示右键菜单
+    rightShow(item) {
+      this.rightMessage = item;
+      this.menu.popup(remote.getCurrentWindow());
+    },
+
+    handleFile(path) {
       fs.readdir(path, { withFileTypes: true }, (err, data) => {
         if (err) {
           console.error(err);
@@ -113,10 +228,40 @@ export default {
             fileList[i] = {
               name: fileList[i],
               type: "dir",
-              icon: "fa-folder-open",
+              icon: "ri-folder-fill",
+              color: "#dcb67a",
             };
           } else if (fileInfo.isFile()) {
-            fileList[i] = { name: fileList[i], type: "file", icon: "fa-file" };
+            console.log(fileList[i]);
+            if (fileList[i].match(/\.html$/)) {
+              fileList[i] = {
+                name: fileList[i],
+                type: "file",
+                icon: "ri-html5-line",
+                color: "#e44f26",
+              };
+            } else if (fileList[i].match(/\.txt$/)) {
+              fileList[i] = {
+                name: fileList[i],
+                type: "file",
+                icon: "ri-file-text-fill",
+                color: "#40a57f",
+              };
+            } else if (fileList[i].match(/\.md$/)) {
+              fileList[i] = {
+                name: fileList[i],
+                type: "file",
+                icon: "ri-markdown-fill",
+                color: "#53b5e7",
+              };
+            } else {
+              fileList[i] = {
+                name: fileList[i],
+                type: "file",
+                icon: "ri-file-fill",
+                color: "#222",
+              };
+            }
           } else {
             fileList[i] = {
               name: fileList[i],
@@ -145,12 +290,12 @@ export default {
       });
     },
     handleOutline() {
-      let matchDOM = JSON.stringify(this.$store.state.Counter.editorHtml).match(
+      let matchDOM = JSON.stringify(this.$store.state.global.editorHtml).match(
         /\<h[1-6]{1}\>.*?\<\/h[1-6]\>/g
       );
-      // console.log(this.$store.state.Counter.editorHtml);
+      // console.log(this.$store.state.global.editorHtml);
       console.log(
-        JSON.stringify(this.$store.state.Counter.editorHtml).match(
+        JSON.stringify(this.$store.state.global.editorHtml).match(
           /\<h[1-6]{1}\>.*?\<\/h[1-6]\>/g
         )
       );
@@ -216,27 +361,44 @@ export default {
         this.handleOutline();
         this.fileModel = false;
       } else {
-        this.handleFile(this.filePath, "clickDir");
+        this.handleFile(this.filePath);
         this.fileModel = true;
       }
     },
     fileListMousedown(e) {
-      console.log(e.button);
+      console.log(e);
 
       if (e.button == 2) {
-        this.fileListRightMenuShow = true;
-        this.fileListRightMenuPosition.x = e.clientX + 10;
-        this.fileListRightMenuPosition.y = e.clientY - 20;
+        this.rightShow();
+        this.rightMessage = {};
+        this.rightMessage.target = "./" + e.target.title;
+
+        // this.fileListRightMenuShow = true;
+        // this.fileListRightMenuPosition.x = e.clientX + 10;
+        // this.fileListRightMenuPosition.y = e.clientY - 20;
         // 点击了鼠标右键
       }
     },
     notifyRightClickMenu(e) {
       console.log(e);
+      // console.log(
+      //   e.target.parentNode.classList.find((val) => val === "fileItem")
+      // );
 
-      if (e.target.className !== "fileItem") {
+      if (e.target.className.indexOf("fileItem") !== -1) {
         // 如果点击的不是文件列表
         this.fileListRightMenuShow = false;
+
+        this.newFile = null;
+        this.newFileName = "";
       }
+    },
+    createFile() {
+      console.log(99554);
+      ipcRenderer.send("createFile", {
+        ...this.newFile,
+        newFileName: this.newFileName,
+      });
     },
   },
 
@@ -263,13 +425,14 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-$fileBoxWidth: calc(250px - 60px + 10px);
+$fileBoxWidth: calc(100% - 60px);
 $fileBoxBodyHeight: calc(100vh - 2rem - 25px - 2em);
 .leftMenu {
-  width: 250px;
+  width: 400px;
   min-height: 100vh;
+  overflow-x: hidden;
   background: #fff;
-  transition: width 0.5s;
+  transition: width 0.4s;
   display: flex;
 
   .menu {
@@ -294,7 +457,7 @@ $fileBoxBodyHeight: calc(100vh - 2rem - 25px - 2em);
       overflow-y: auto;
       overflow-x: hidden;
       height: $fileBoxBodyHeight;
-      width: $fileBoxWidth;
+      width: 100%;
 
       &::-webkit-scrollbar {
         width: 10px;
@@ -316,9 +479,6 @@ $fileBoxBodyHeight: calc(100vh - 2rem - 25px - 2em);
         background-color: #0e2531;
       }
 
-      ul {
-        list-style: none;
-      }
       .outlineModel,
       .fileModel {
         transition: width 0.4s;
@@ -365,10 +525,39 @@ $fileBoxBodyHeight: calc(100vh - 2rem - 25px - 2em);
     }
   }
 }
+ul {
+  list-style: none;
+  padding: 0;
+}
+.menu {
+  li {
+    padding: 1.5em 0;
+    display: flex;
+    justify-content: center;
+    cursor: pointer;
+
+    i {
+      // color: #979797;
+      color: #afafaf;
+      font-size: 2rem;
+    }
+  }
+}
 
 .RightClickMenu {
   width: 250px;
   position: fixed;
+  box-shadow: 1px 2px 10px 1px #ccc;
+}
+
+.inputFileName {
+  display: flex;
+  align-items: center;
+  .inputText {
+    height: 1.2rem;
+    width: 6rem;
+    outline-color: #454b50;
+  }
 }
 
 .showByFlex {

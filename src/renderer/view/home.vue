@@ -47,6 +47,13 @@
         </div>
 
         <app-footer :count="writeWords"></app-footer>
+
+        <input-modal
+          v-if="false"
+          class="inputModal"
+          :title="'新建文件'"
+          :placeholder="'名称'"
+        ></input-modal>
       </div>
     </div>
   </div>
@@ -57,12 +64,13 @@ const fs = require("fs");
 import AppHeader from "@/components/Header/Header.vue";
 import AppFooter from "@/components/Footer/Footer.vue";
 import AppLeftMenu from "@/components/LeftMenu/LeftMenu.vue";
-import { ipcMain } from "electron";
+import InputModal from "@/components/inputModal/inputModal.vue";
+
 let ipcRenderer = require("electron").ipcRenderer;
 
 export default {
   name: "Home",
-  components: { AppHeader, AppFooter, AppLeftMenu },
+  components: { AppHeader, AppFooter, AppLeftMenu, InputModal },
   data() {
     return {
       showLeftMenu: false,
@@ -209,53 +217,57 @@ export default {
         (navigator.platform.match("Mac") ? e.metaKey : e.ctrlKey) &&
         (e.key === "S" || e.key === "s")
       ) {
-        let saveFile = dialog.showSaveDialog({
-          title: "保存文件",
-          defaultPath: "./" + this.appHeaderTitle,
-          nameFieldLabel: this.appHeaderTitle,
-          properties: ["createDirectory", "showOverwriteConfirmation"],
-          filters: [
-            { name: "markdown", extensions: ["md"] },
-            { name: "txt", extensions: ["txt"] },
-            { name: "html", extensions: ["html"] },
-          ],
-        });
-
-        // have save
-        if (saveFile) {
-          console.log(saveFile);
-          if (/\.md/.exec(saveFile)) {
-            this.appHeaderTitle = /\\{1}.{0,12}\.md$/
-              .exec(saveFile)[0]
-              .replace(/\\/, "");
-
-            let file = fs.writeFile(
-              saveFile,
-              this.$refs.editor.innerText,
-              function (err) {
-                if (err) {
-                  console.error(err);
-                }
-              }
-            );
-          } else if (saveFile.toString().indexOf(".html") !== -1) {
-            this.appHeaderTitle = /\\{1}.{0,12}\.html$/
-              .exec(saveFile)[0]
-              .replace(/\\/, "");
+        dialog.showSaveDialog(
+          {
+            title: "保存文件",
+            defaultPath: "./" + this.appHeaderTitle,
+            nameFieldLabel: this.appHeaderTitle,
+            properties: ["createDirectory", "showOverwriteConfirmation"],
+            filters: [
+              { name: "markdown", extensions: ["md"] },
+              { name: "txt", extensions: ["txt"] },
+              { name: "html", extensions: ["html"] },
+            ],
+          },
+          (res) => {
+            let saveFile = res;
             console.log(saveFile);
-            let file = fs.writeFile(
-              saveFile,
-              this.$refs.editor.innerHTML,
-              function (err) {
-                if (err) {
-                  console.error(err);
-                }
-              }
-            );
-          }
+            console.log(this);
+            if (!res) {
+              return;
+            }
+            if (/\.md/.exec(saveFile)) {
+              this.appHeaderTitle = /\\{1}.{0,12}\.md$/
+                .exec(saveFile)[0]
+                .replace(/\\/, "");
 
-          // .replace(/\.*md/, "");
-        }
+              let file = fs.writeFile(
+                saveFile,
+                this.$refs.editor.innerText,
+                function (err) {
+                  if (err) {
+                    console.error(err);
+                  }
+                }
+              );
+            } else if (saveFile.toString().indexOf(".html") !== -1) {
+              this.appHeaderTitle = /\\{1}.{0,12}\.html$/
+                .exec(saveFile)[0]
+                .replace(/\\/, "");
+              console.log(saveFile);
+              let file = fs.writeFile(
+                saveFile,
+                this.$refs.editor.innerHTML,
+                function (err) {
+                  if (err) {
+                    console.error(err);
+                  }
+                }
+              );
+            }
+          }
+        );
+
         return;
       } else {
         return;
@@ -364,5 +376,19 @@ export default {
   &::-webkit-scrollbar-corner {
     background-color: #0e2531;
   }
+}
+
+.inputModal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 280px;
+  height: 70px;
+  display: flex;
+  justify-content: center;
+  background: #263238;
+  box-shadow: 0 0 5px 2px #eee;
+  border-radius: 3px;
 }
 </style>

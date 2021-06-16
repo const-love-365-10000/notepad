@@ -1,7 +1,7 @@
 const state = {
 	main: 0,
-	editorHtml: null,
-	appMousedown: 0,
+	// editorHtml: null,
+	// appMousedown: 0, // 暂无用
 };
 
 const mutations = {
@@ -11,12 +11,12 @@ const mutations = {
 	INCREMENT_MAIN_COUNTER(state) {
 		state.main++;
 	},
-	setEditorHtml(state, editorHtml) {
-		state.editorHtml = editorHtml;
-	},
-	setAppMousedown(state, appMousedown) {
-		state.appMousedown = appMousedown;
-	},
+	// setEditorHtml(state, editorHtml) {
+	// 	state.editorHtml = editorHtml;
+	// },
+	// setAppMousedown(state, appMousedown) {
+	// 	state.appMousedown = appMousedown;
+	// },
 };
 
 const actions = {
@@ -24,12 +24,12 @@ const actions = {
 		// do something async
 		commit("INCREMENT_MAIN_COUNTER");
 	},
-	setEditorHtml({ commit }, editorHtml) {
-		commit("setEditorHtml", editorHtml);
-	},
-	setAppMousedown({ commit }, appMousedown) {
-		commit("setAppMousedown", appMousedown);
-	},
+	// setEditorHtml({ commit }, editorHtml) {
+	// 	commit("setEditorHtml", editorHtml);
+	// },
+	// setAppMousedown({ commit }, appMousedown) {
+	// 	commit("setAppMousedown", appMousedown);
+	// },
 };
 
 export default {

@@ -1,18 +1,20 @@
 <template>
   <div class="header">
-    <div class="menuBox"><i class="fas fa-align-justify"></i></div>
-    <i class="fab fa-markdown app-header-logo"></i>
+    <div class="menuBox">
+      <i class="ri-list-unordered"></i>
+    </div>
+    <i class="ri-markdown-fill app-header-logo"></i>
 
     <div>{{ title }}</div>
 
     <div class="controlMenu">
-      <i class="fas fa-window-minimize minimize" @click="minimize"></i>
+      <i class="ri-subtract-line" @click="minimize"></i>
       <i
-        class="far"
-        :class="isMax ? 'fa-window-restore' : 'fa-window-maximize'"
+        class=""
+        :class="isMax ? 'ri-picture-in-picture-line' : 'ri-aspect-ratio-line'"
         @click="restore"
       ></i>
-      <i class="fas fa-window-close" @click="close"></i>
+      <i class="ri-close-fill" @click="close"></i>
     </div>
   </div>
 </template>

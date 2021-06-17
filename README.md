@@ -7,9 +7,13 @@
 - Electron-package
 
 ## 使用的库
-watch
-Watch 是一个监听文件夹改变的Node.JS模块  （不再使用）
-https://github.com/mikeal/watch
+marked
+markdown语法转html
+
+Remix icon图标库
+开源
+
+
 
 
 
@@ -27,3 +31,4 @@ Electron-package使用方法：
 可以用的
 electron-packager . fukaiitapp --out fukaiitapp --arch=x64 --overwrite
 electron-packager . notepad --out ../dist --arch=x64 --overwrite
+

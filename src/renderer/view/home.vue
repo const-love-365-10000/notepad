@@ -1,6 +1,7 @@
 <template>
   <div @mousedown="appMousedown">
     <app-header :title="appHeaderTitle" style=""></app-header>
+
     <div class="main">
       <app-left-menu
         ref="leftMenu"
@@ -11,14 +12,14 @@
         <div
           style="
             width: 100%;
-            height: calc(100vh - 2rem - 2.5rem);
+            height: calc(100vh - 70px - 2.5rem);
             display: flex;
           "
         >
           <div class="writeHelpBar">
             <span
               ><i
-                class="fas fa-paragraph"
+                class="ri-paragraph"
                 style="position: relative; cursor: pointer"
                 :style="{ top: writeTipOffsetTop + 'px' }"
               ></i
@@ -39,6 +40,7 @@
             @keydown.ctrl.52="execCommand('formatBlock', 'H4')"
             @keydown.ctrl.53="execCommand('formatBlock', 'H5')"
             @keydown.ctrl.54="execCommand('formatBlock', 'H6')"
+            @keydown.enter="translate"
           >
             <span v-if="showPlaceholder" style="color: rgba(0, 0, 0, 0.8)"
               >记事吧...</span
@@ -61,6 +63,13 @@
 <script>
 const { dialog } = require("electron").remote;
 const fs = require("fs");
+import { translateToHtml, translateToMd } from "@/util/translate.js";
+import marked from "marked";
+import turndown from "turndown";
+var turndownService = new turndown();
+import MarkdownIt from "markdown-it";
+var mdIt = new MarkdownIt();
+import dompurify from "dompurify";
 import AppHeader from "@/components/Header/Header.vue";
 import AppFooter from "@/components/Footer/Footer.vue";
 import AppLeftMenu from "@/components/LeftMenu/LeftMenu.vue";
@@ -76,13 +85,14 @@ export default {
       showLeftMenu: false,
       appHeaderTitle: "未命名-1",
       showPlaceholder: true,
-      writeTipOffsetTop: 22,
+      writeTipOffsetTop: 16,
       writeWords: {
         char: 0,
         paragraph: 0,
         word: 0,
       },
       editorHtml: null,
+      selection: null,
     };
   },
   computed: {
@@ -101,7 +111,8 @@ export default {
       console.log(val);
       if (val === 0) {
         this.showLeftMenu = false;
-        ipcRenderer.send("changWindowSize", [400, 370]);
+        // ipcRenderer.send("changWindowSize", [400, 370]);
+        ipcRenderer.send("changWindowSize", [800, 600]);
       } else if (val === 1) {
         this.showLeftMenu = true;
         ipcRenderer.send("changWindowSize", [1004, 710]);
@@ -117,39 +128,59 @@ export default {
       // this.writeWords = this.$refs.editor.innerText.length;
       let countChar = 0;
       let countParagraph = 0;
+      let text = this.$refs.editor.innerText;
+
       for (let i in this.$refs.editor.innerText) {
-        if (
-          /[0-9a-zA-Z\u4e00-\u9fa5]/g.test(
-            this.$refs.editor.innerText.charAt(i)
-          )
-        ) {
+        if (/[0-9a-zA-Z\u4e00-\u9fa5]/g.test(text.charAt(i))) {
           countChar++;
         }
-        if (/\n/g.test(this.$refs.editor.innerText.charAt(i))) {
+        if (/\n/g.test(text.charAt(i))) {
           countParagraph++;
         }
       }
       this.writeWords.char = countChar;
       this.writeWords.paragraph = countParagraph;
-      console.log(countParagraph);
+      console.log(text.match(/\s/g), text.match(/\r\n/g));
+      // this.writeWords.word =
+      //   text.match(/\s/g).length + text.match(/\n/g).length;
 
+      // 编辑器逻辑
+      console.log(e);
       let selection = document.getSelection();
+      let range = selection.getRangeAt(0);
+      this.selection = selection;
+      this.range = selection.getRangeAt(0);
+      console.log(selection, this.range);
+
+      // range.surroundContents(document.createElement("p"));
+
+      // selection.focusNode.data = marked(selection.focusNode.nodeValue);
+
+      // console.log(
+      //   selection.baseNode,
+      //   e.target.children[e.target.children.length - 1].offsetTop
+      // );
+      this.writeTipOffsetTop = selection.baseNode
+        ? selection.baseNode.offsetTop - 72
+        : selection.baseNode.parentNode.offsetTop;
+      // this.writeTipOffsetTop =
+      //   this.focusNode.parentNode.offsetTo - 70 > 0
+      //     ? Math.abs(this.focusNode.parentNode.offsetTop)
+      //     : 22;
+      // if (selection.baseNode.offsetTop) {
+      //   //   // 回车点击的时候
+      //   //   this.writeTipOffsetTop =
+      //   //     selection.baseNode.offsetTop - 32 > 0
+      //   //       ? selection.baseNode.offsetTop - 70
+      //   //       : 12;
+
+      //   this.writeTipOffsetTop = selection.baseNode.offsetTop - 16 * 3 > 0;
+      // } else {
+      //   // 输入的时候
+      //   this.writeTipOffsetTop = selection.baseNode.parentNode.offsetTop - 16;
+      // }
 
       console.log(selection);
-
-      if (selection.baseNode.offsetTop) {
-        // 回车点击的时候
-        this.writeTipOffsetTop =
-          selection.baseNode.offsetTop - 32 > 0
-            ? selection.baseNode.offsetTop - 30
-            : 22;
-      } else {
-        // 输入的时候
-        this.writeTipOffsetTop =
-          selection.baseNode.parentNode.offsetTop - 32 > 0
-            ? selection.baseNode.parentNode.offsetTop - 30
-            : 22;
-      }
 
       // if (
       //   selection.anchorNode.parentNode &&
@@ -159,20 +190,21 @@ export default {
       //   this.writeTipOffsetTop = selection.anchorNode.parentNode.offsetTop - 30;
       // }
     },
-    editorClick() {
-      // 左侧光标工具显示
+    editorClick(e) {
+      // markdown
       let selection = document.getSelection();
-      if (selection.baseNode.offsetTop) {
-        this.writeTipOffsetTop =
-          selection.baseNode.offsetTop - 32 > 0
-            ? selection.baseNode.offsetTop - 30
-            : 22;
+      if (selection.baseNode.innerHTML) {
+        selection.baseNode.innerHTML = turndownService.turndown(
+          selection.baseNode.nodeValue
+        );
       } else {
-        this.writeTipOffsetTop =
-          selection.baseNode.parentNode.offsetTop - 32 > 0
-            ? selection.baseNode.parentNode.offsetTop - 30
-            : 22;
       }
+
+      // 左侧光标工具显示
+
+      console.log(e.target.offsetTop);
+      this.writeTipOffsetTop =
+        e.target.offsetTop - 70 > 0 ? Math.abs(e.target.offsetTop - 70) : 22;
     },
     editorFocus() {
       // 隐藏Placeholder
@@ -213,75 +245,177 @@ export default {
     },
 
     handleSaveFile(e) {
-      if (
-        (navigator.platform.match("Mac") ? e.metaKey : e.ctrlKey) &&
-        (e.key === "S" || e.key === "s")
-      ) {
-        dialog.showSaveDialog(
-          {
-            title: "保存文件",
-            defaultPath: "./" + this.appHeaderTitle,
-            nameFieldLabel: this.appHeaderTitle,
-            properties: ["createDirectory", "showOverwriteConfirmation"],
-            filters: [
-              { name: "markdown", extensions: ["md"] },
-              { name: "txt", extensions: ["txt"] },
-              { name: "html", extensions: ["html"] },
-            ],
-          },
-          (res) => {
-            let saveFile = res;
-            console.log(saveFile);
-            console.log(this);
-            if (!res) {
-              return;
-            }
-            if (/\.md/.exec(saveFile)) {
-              this.appHeaderTitle = /\\{1}.{0,12}\.md$/
-                .exec(saveFile)[0]
-                .replace(/\\/, "");
-
-              let file = fs.writeFile(
-                saveFile,
-                this.$refs.editor.innerText,
-                function (err) {
-                  if (err) {
-                    console.error(err);
-                  }
-                }
-              );
-            } else if (saveFile.toString().indexOf(".html") !== -1) {
-              this.appHeaderTitle = /\\{1}.{0,12}\.html$/
-                .exec(saveFile)[0]
-                .replace(/\\/, "");
-              console.log(saveFile);
-              let file = fs.writeFile(
-                saveFile,
-                this.$refs.editor.innerHTML,
-                function (err) {
-                  if (err) {
-                    console.error(err);
-                  }
-                }
-              );
-            }
-          }
-        );
-
-        return;
-      } else {
-        return;
-      }
+      // bug太多，暂时禁用
+      // if (
+      //   (navigator.platform.match("Mac") ? e.metaKey : e.ctrlKey) &&
+      //   (e.key === "S" || e.key === "s")
+      // ) {
+      //   dialog.showSaveDialog(
+      //     {
+      //       title: "保存文件",
+      //       defaultPath: "./" + this.appHeaderTitle,
+      //       nameFieldLabel: this.appHeaderTitle,
+      //       properties: ["createDirectory", "showOverwriteConfirmation"],
+      //       filters: [
+      //         { name: "markdown", extensions: ["md"] },
+      //         { name: "txt", extensions: ["txt"] },
+      //         { name: "html", extensions: ["html"] },
+      //       ],
+      //     },
+      //     (res) => {
+      //       let saveFile = res;
+      //       console.log(saveFile);
+      //       console.log(this);
+      //       if (!res) {
+      //         return;
+      //       }
+      //       if (/\.md/.exec(saveFile)) {
+      //         this.appHeaderTitle = /\\{1}.{0,12}\.md$/
+      //           .exec(saveFile)[0]
+      //           .replace(/\\/, "");
+      //         let file = fs.writeFile(
+      //           saveFile,
+      //           this.$refs.editor.innerText,
+      //           function (err) {
+      //             if (err) {
+      //               console.error(err);
+      //             }
+      //           }
+      //         );
+      //       } else if (saveFile.toString().indexOf(".html") !== -1) {
+      //         this.appHeaderTitle = /\\{1}.{0,12}\.html$/
+      //           .exec(saveFile)[0]
+      //           .replace(/\\/, "");
+      //         console.log(saveFile);
+      //         let file = fs.writeFile(
+      //           saveFile,
+      //           this.$refs.editor.innerHTML,
+      //           function (err) {
+      //             if (err) {
+      //               console.error(err);
+      //             }
+      //           }
+      //         );
+      //       }
+      //     }
+      //   );
+      //   return;
+      // } else {
+      //   return;
+      // }
     },
     openFile(fileContent) {
       // 打开md
-      // this.$refs.editor.innerHTML = fileContent;
+      this.$refs.editor.innerHTML = fileContent;
       // 打开h5
-      this.$refs.editor.innerText = fileContent;
+      // this.$refs.editor.innerText = fileContent;
     },
     appMousedown(e) {
       console.log("appMousedown");
       this.$refs.leftMenu.notifyRightClickMenu(e);
+    },
+    translate(e) {
+      // console.log(turndownService.turndown("<h1>Hello world!</h1>"));
+      // translateToMd(this.$refs.editor.innerText).then((res) => {
+      //   let md = res;
+      //   console.log(md);
+      //   this.$refs.editor.innerHTML = dompurify.sanitize(
+      //     marked(md, { breaks: true })
+      //   );
+      // });
+      let selection = document.getSelection();
+
+      console.log("se", selection);
+      console.log(this.$refs.editor.innerHTML);
+      console.log(turndownService.turndown(this.$refs.editor.innerHTML));
+      console.log(
+        marked(turndownService.turndown(this.$refs.editor.innerHTML))
+      );
+      // this.$refs.editor.innerHTML =
+      //   marked(this.$refs.editor.innerText) + "<p> </p>";
+      // this.$refs.editor.innerHTML = mdIt.render(this.$refs.editor.innerHTML);
+      // this.$refs.editor.innerHTML =
+      //   marked(
+      //     turndownService
+      //       .turndown(this.$refs.editor.innerHTML)
+      //       .replace(/\\/g, "")
+      //   ) + " <p class='clean'>  </p>";
+
+      console.log(555, this.selection);
+      // selection.baseNode.innerHTML = marked(this.selection.baseNode.innerText);
+      let range = selection.getRangeAt(0);
+      // range.setStart(selection.baseNode, selection.baseOffset);
+      // range.setStart(selection.focusNode, selection.focusOffset);
+      // range.surroundContents();
+      let newEl = document.createElement("p");
+      newEl.innerHTML = marked(selection.baseNode.nodeValue);
+      selection.baseNode.parentNode.insertBefore(newEl, selection.baseNode);
+      // selection.baseNode.nodeValue = "";
+      selection.baseNode.parentNode.removeChild(selection.baseNode);
+      // selection.baseNode.data = marked(selection.baseNode.nodeValue);
+
+      // this.$refs.editor.innerHTML = dompurify.sanitize(
+      //   marked(turndownService.turndown(this.$refs.editor.innerHTML))
+      // );
+
+      // -----------------------
+
+      // let pArr = this.$refs.editor.getElementsByTagName("p");
+      // for (let i in pArr) {
+      //   if (
+      //     pArr[i].id === "clean" &&
+      //     pArr[i].children &&
+      //     pArr[i].children.length
+      //   ) {
+      //     pArr[i].parentNode.removeChild(pArr[i]);
+      //   }
+      // }
+
+      // md转html
+      // let htmlCode = marked(
+      //   document.getSelection().getRangeAt(0).commonAncestorContainer
+      //     .textContent
+      // );
+      // 替换原文本为html代码
+      // let reg = new RegExp(
+      //   document
+      //     .getSelection()
+      //     .getRangeAt(0).commonAncestorContainer.textContent,
+      //   "g"
+      // );
+      // this.$refs.editor.innerHTML =
+      //   this.$refs.editor.innerHTML.replace(reg, htmlCode) + "<p > </p>";
+
+      // this.$refs.editor.innerHTML = dompurify.sanitize(
+      //   this.$refs.editor.innerHTML
+      // );
+
+      // 在后面插入新节点，移动光标
+      // let pArr = this.$refs.editor.getElementsByTagName("p");
+      // for (let i in pArr) {
+      //   console.log(pArr[i].id);
+      //   if (pArr[i].id) {
+      //     pArr[i].id = "";
+      //   }
+      // }
+      // let newElement = document.createElement("p");
+      // newElement.id = "selectionInput";
+
+      // console.log(555, this.selection);
+      // // this.$refs.editor.appendChild(newElement);
+
+      // let range = document.getSelection().getRangeAt(0);
+      // range.setEnd(document.getElementById("selectionInput"), 0);
+      // range.setStart(document.getElementById("selectionInput"), 0);
+
+      // let range = document.getSelection().getRangeAt(0);
+      // range.setEnd(this.$refs.editor, 2);
+      // range.setStart(this.$refs.editor, 2);
+      // console.log(document.getSelection());
+      // let selection = document.getSelection();
+      // console.log(222, selection);
+      // range.setEnd(selection.focusNode, 1);
+      // range.setStart(selection.focusNode, 1);
     },
   },
   watch: {},
@@ -390,5 +524,14 @@ export default {
   background: #263238;
   box-shadow: 0 0 5px 2px #eee;
   border-radius: 3px;
+}
+
+p {
+  white-space: pre-wrap;
+}
+
+.clean {
+  // outline: none;
+  border: none;
 }
 </style>

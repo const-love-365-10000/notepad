@@ -8,7 +8,7 @@
       :style="modalStyle"
     >
       <i
-        class="far fa-dot-circle"
+        class="ri-radio-button-line"
         :title="modelIndex === 0 ? '简约模式' : '完全模式'"
       ></i>
     </div>
@@ -19,7 +19,7 @@
         @mouseenter="showCountBox = true"
         @mouseleave="showCountBox = false"
       >
-        <i class="far fa-file-word"> </i>
+        <i class="ri-file-word-line"> </i>
         <div class="words">{{ count.char }}</div>
       </div>
 
@@ -62,7 +62,6 @@ export default {
   },
   methods: {
     changeModel() {
-      console.log(999);
       this.modelIndex = this.modelIndex === 0 ? 1 : 0;
       this.$parent.$emit("changeModel", this.modelIndex);
     },

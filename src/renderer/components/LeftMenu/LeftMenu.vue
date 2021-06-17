@@ -2,10 +2,10 @@
   <div class="leftMenu" :style="{ width: show ? '400px' : '0' }">
     <div class="menu">
       <ul>
-        <li><i class="fas fa-folder"></i></li>
-        <li><i class="fas fa-search"></i></li>
-        <li><i class="fas fa-project-diagram"></i></li>
-        <li><i class="fas fa-code-branch"></i></li>
+        <li><i class="ri-folder-open-fill"></i></li>
+        <li><i class="ri-search-eye-fill"></i></li>
+        <li><i class="ri-git-merge-fill"></i></li>
+        <li><i class="ri-terminal-box-fill"></i></li>
       </ul>
     </div>
     <div class="fileBox">
@@ -31,7 +31,7 @@
             <i
               :class="i.icon"
               :style="{ color: i.color }"
-              style="margin: 0 5px"
+              style="margin: 0 5px; vertical-align: text-bottom"
             ></i>
             {{ i.name }}
           </li>
@@ -254,12 +254,19 @@ export default {
                 icon: "ri-markdown-fill",
                 color: "#53b5e7",
               };
+            } else if (fileList[i].match(/\.vue$/)) {
+              fileList[i] = {
+                name: fileList[i],
+                type: "file",
+                icon: "ri-vuejs-fill",
+                color: "#41b883",
+              };
             } else {
               fileList[i] = {
                 name: fileList[i],
                 type: "file",
                 icon: "ri-file-fill",
-                color: "#222",
+                color: "rgb(177, 76, 76)",
               };
             }
           } else {
@@ -267,6 +274,7 @@ export default {
               name: fileList[i],
               type: "unknown",
               icon: "fa-sticky-note",
+              color: "#3c8dbc",
             };
           }
           // console.log(fileList[i]);

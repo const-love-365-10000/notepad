@@ -2,6 +2,7 @@ const state = {
 	editorHtml: null,
 	appMousedown: 0, // 暂无用
 	filePath: "./",
+	model: 0, // 0是简约模式，1是完整模式
 };
 
 const mutations = {
@@ -14,6 +15,9 @@ const mutations = {
 	setFilePath(state, filePath) {
 		state.filePath = filePath;
 	},
+	setModel(state, model) {
+		state.model = model;
+	},
 };
 
 const actions = {
@@ -25,6 +29,9 @@ const actions = {
 	},
 	setFilePath({ commit }, filePath) {
 		commit("setFilePath", filePath);
+	},
+	setModel({ commit }, model) {
+		commit("setModel", model);
 	},
 };
 

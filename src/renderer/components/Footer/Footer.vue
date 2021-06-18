@@ -64,6 +64,7 @@ export default {
     changeModel() {
       this.modelIndex = this.modelIndex === 0 ? 1 : 0;
       this.$parent.$emit("changeModel", this.modelIndex);
+      this.$store.dispatch("setModel", this.modelIndex);
     },
   },
 };

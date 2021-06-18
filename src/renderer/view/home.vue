@@ -27,8 +27,8 @@
           </div>
           <div
             contenteditable="true"
-            id="editor"
             class="editor"
+            id="editor"
             ref="editor"
             @focus="editorFocus"
             @blur="editorBlur"
@@ -42,6 +42,7 @@
             @keydown.ctrl.54="execCommand('formatBlock', 'H6')"
             @keydown.enter="translate"
           >
+            <p id="focus" style="width: 100%; height: 1.5rem"></p>
             <span v-if="showPlaceholder" style="color: rgba(0, 0, 0, 0.8)"
               >记事吧...</span
             >
@@ -64,11 +65,10 @@
 const { dialog } = require("electron").remote;
 const fs = require("fs");
 import { translateToHtml, translateToMd } from "@/util/translate.js";
+import $ from "jquery";
 import marked from "marked";
 import turndown from "turndown";
 var turndownService = new turndown();
-import MarkdownIt from "markdown-it";
-var mdIt = new MarkdownIt();
 import dompurify from "dompurify";
 import AppHeader from "@/components/Header/Header.vue";
 import AppFooter from "@/components/Footer/Footer.vue";
@@ -145,12 +145,12 @@ export default {
       //   text.match(/\s/g).length + text.match(/\n/g).length;
 
       // 编辑器逻辑
-      console.log(e);
+      // console.log(e);
       let selection = document.getSelection();
-      let range = selection.getRangeAt(0);
-      this.selection = selection;
-      this.range = selection.getRangeAt(0);
-      console.log(selection, this.range);
+      // let range = selection.getRangeAt(0);
+      // this.selection = selection;
+      // this.range = selection.getRangeAt(0);
+      // console.log(selection, this.range);
 
       // range.surroundContents(document.createElement("p"));
 
@@ -193,12 +193,19 @@ export default {
     editorClick(e) {
       // markdown
       let selection = document.getSelection();
-      if (selection.baseNode.innerHTML) {
-        selection.baseNode.innerHTML = turndownService.turndown(
-          selection.baseNode.nodeValue
-        );
-      } else {
-      }
+      let range = selection.getRangeAt(0);
+
+      console.log("84", selection);
+      console.log(turndownService.turndown(e.target.innerHTML));
+      // if (e.target.innerHTML && e.target.id.indexOf("#") !== -1) {
+      //   // e.target.innerHTML = turndownService.turndown(e.target.innerHTML);
+      //   e.target.innerHTML = e.target.id;
+
+      //   range.setStart(selection.baseNode, e.target.id.length);
+      //   range.setEnd(selection.baseNode, e.target.id.length);
+      //   // e.target.innerHTML = "<em>555</em>";
+      // } else {
+      // }
 
       // 左侧光标工具显示
 
@@ -315,107 +322,102 @@ export default {
       this.$refs.leftMenu.notifyRightClickMenu(e);
     },
     translate(e) {
-      // console.log(turndownService.turndown("<h1>Hello world!</h1>"));
-      // translateToMd(this.$refs.editor.innerText).then((res) => {
-      //   let md = res;
-      //   console.log(md);
-      //   this.$refs.editor.innerHTML = dompurify.sanitize(
-      //     marked(md, { breaks: true })
-      //   );
-      // });
+      e.preventDefault();
+
+      function insterAfter(newElement, targetElement) {
+        let parent = targetElement.parentNode;
+        if (parent.lastChild.isEqualNode(targetElement)) {
+          parent.appendChild(newElement);
+        } else {
+          parent.insertBefore(newElement, targetElement.nextSibling);
+        }
+      }
+      console.log($("#editor"));
+      // 简约模式不进行md翻译
+      if (this.$store.state.global.model === 0) {
+        return;
+      }
+
       let selection = document.getSelection();
 
-      console.log("se", selection);
-      console.log(this.$refs.editor.innerHTML);
-      console.log(turndownService.turndown(this.$refs.editor.innerHTML));
-      console.log(
-        marked(turndownService.turndown(this.$refs.editor.innerHTML))
-      );
-      // this.$refs.editor.innerHTML =
-      //   marked(this.$refs.editor.innerText) + "<p> </p>";
-      // this.$refs.editor.innerHTML = mdIt.render(this.$refs.editor.innerHTML);
-      // this.$refs.editor.innerHTML =
-      //   marked(
-      //     turndownService
-      //       .turndown(this.$refs.editor.innerHTML)
-      //       .replace(/\\/g, "")
-      //   ) + " <p class='clean'>  </p>";
+      // console.log("id", selection.baseNode.nodeType);
+      // if (
+      //   selection.baseNode.nodeType !== 3 ||
+      //   (selection.baseNode.parentNode.nodeType !== 3 &&
+      //     selection.baseNode.parentNode.id)
+      // ) {
+      //   // 已经是元素节点，没必要再翻译
+      //   console.log("已经是元素节点，没必要再翻译");
+      //   console.log(654, selection.baseNode.parentElementNode);
+      //   return;
+      // }
 
-      console.log(555, this.selection);
+      console.log(555, selection.baseNode.nodeValue.match(/\#{1,6}/g));
       // selection.baseNode.innerHTML = marked(this.selection.baseNode.innerText);
       let range = selection.getRangeAt(0);
-      // range.setStart(selection.baseNode, selection.baseOffset);
-      // range.setStart(selection.focusNode, selection.focusOffset);
-      // range.surroundContents();
-      let newEl = document.createElement("p");
-      newEl.innerHTML = marked(selection.baseNode.nodeValue);
-      selection.baseNode.parentNode.insertBefore(newEl, selection.baseNode);
-      // selection.baseNode.nodeValue = "";
-      selection.baseNode.parentNode.removeChild(selection.baseNode);
-      // selection.baseNode.data = marked(selection.baseNode.nodeValue);
 
-      // this.$refs.editor.innerHTML = dompurify.sanitize(
-      //   marked(turndownService.turndown(this.$refs.editor.innerHTML))
-      // );
+      // 根据#的个数判断h标题
+      let header = "";
+      try {
+        let arr = selection.baseNode.nodeValue.match(/\#/g);
+        for (let i = 0; i < arr.length; i++) {
+          header += "#";
+          if (i === arr.length - 1) {
+            header += " ";
+          }
+        }
+      } catch (err) {}
 
-      // -----------------------
+      console.log("111111111", selection);
 
-      // let pArr = this.$refs.editor.getElementsByTagName("p");
-      // for (let i in pArr) {
-      //   if (
-      //     pArr[i].id === "clean" &&
-      //     pArr[i].children &&
-      //     pArr[i].children.length
-      //   ) {
-      //     pArr[i].parentNode.removeChild(pArr[i]);
-      //   }
-      // }
+      console.log(selection);
+      // if (selection.baseNode.nodeType === 1) {
+      //   selection.baseNode.innerHTML = marked(selection.baseNode.nodeValue, {
+      //     headerPrefix: header,
+      //   });
+      //   console.log("我是1");
+      // } else {
+      let newEl = document.createElement("div");
+      let focus = document.getElementById("focus");
+      newEl.className = "clean";
+      newEl.innerHTML = marked(selection.baseNode.nodeValue, {
+        headerPrefix: header,
+      });
+      console.log(newEl.innerHTML);
+      // range.insertNode(newEl);
 
-      // md转html
-      // let htmlCode = marked(
-      //   document.getSelection().getRangeAt(0).commonAncestorContainer
-      //     .textContent
-      // );
-      // 替换原文本为html代码
-      // let reg = new RegExp(
-      //   document
-      //     .getSelection()
-      //     .getRangeAt(0).commonAncestorContainer.textContent,
-      //   "g"
-      // );
-      // this.$refs.editor.innerHTML =
-      //   this.$refs.editor.innerHTML.replace(reg, htmlCode) + "<p > </p>";
+      // if (!selection.baseNode.parentElement.id) {
+      //   selection.baseNode.parentElement.parentElement.insertBefore(
+      //     newEl,
+      //     selection.baseNode.parentElement
+      //   );
+      // } else {
 
-      // this.$refs.editor.innerHTML = dompurify.sanitize(
-      //   this.$refs.editor.innerHTML
-      // );
+      // selection.baseNode.parentNode.removeChild(selection.baseNode);
 
-      // 在后面插入新节点，移动光标
-      // let pArr = this.$refs.editor.getElementsByTagName("p");
-      // for (let i in pArr) {
-      //   console.log(pArr[i].id);
-      //   if (pArr[i].id) {
-      //     pArr[i].id = "";
-      //   }
-      // }
-      // let newElement = document.createElement("p");
-      // newElement.id = "selectionInput";
-
-      // console.log(555, this.selection);
-      // // this.$refs.editor.appendChild(newElement);
-
-      // let range = document.getSelection().getRangeAt(0);
-      // range.setEnd(document.getElementById("selectionInput"), 0);
-      // range.setStart(document.getElementById("selectionInput"), 0);
-
-      // let range = document.getSelection().getRangeAt(0);
-      // range.setEnd(this.$refs.editor, 2);
+      // document.getElementById("focus").innerText = "";
       // range.setStart(this.$refs.editor, 2);
-      // console.log(document.getSelection());
-      // let selection = document.getSelection();
-      // console.log(222, selection);
-      // range.setEnd(selection.focusNode, 1);
-      // range.setStart(selection.focusNode, 1);
+      // range.setEnd(this.$refs.editor, 2);
+      if (
+        (selection.baseNode.nodeType === 1 &&
+          selection.baseNode.isEqualNode(focus)) ||
+        selection.baseNode.parentElement === focus
+      ) {
+        console.log("我是1");
+        this.$refs.editor.insertBefore(newEl, focus);
+        selection.baseNode.parentNode.removeChild(selection.baseNode);
+        range.selectNodeContents(focus);
+      } else {
+        console.log("我是2");
+        let div = document.createElement("div");
+        div.className = "clean";
+        this.$refs.editor.insertBefore(
+          div,
+          selection.baseNode.parentElement.parentElement.nextElementSibling
+        );
+        range.selectNodeContents(div);
+      }
+      // }
     },
   },
   watch: {},
@@ -526,12 +528,18 @@ export default {
   border-radius: 3px;
 }
 
-p {
-  white-space: pre-wrap;
-}
-
-.clean {
-  // outline: none;
-  border: none;
+#editor {
+  p {
+    white-space: pre-wrap;
+  }
+  p,
+  div {
+    width: 100%;
+    min-height: 1.5rem;
+  }
+  .clean {
+    // outline: none;
+    border: none;
+  }
 }
 </style>

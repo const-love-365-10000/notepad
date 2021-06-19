@@ -1,0 +1,28 @@
+#editor {
+	font-size: 1.25rem;
+
+	h1 {
+		width: 100%;
+		min-height: 1.5rem;
+	}
+
+	blockquote {
+		background-color: #fefefe;
+		border-left: 2px solid #6886bb;
+		padding: 0.5em 0.25em;
+		color: #888;
+	}
+
+	strong {
+		font-weight: 900;
+	}
+
+	a {
+		color: #7f7fd8;
+		font-weight: 700;
+	}
+
+	code {
+		background: #e3e7ec;
+	}
+}

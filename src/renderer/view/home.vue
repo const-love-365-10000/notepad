@@ -42,7 +42,7 @@
             @keydown.ctrl.54="execCommand('formatBlock', 'H6')"
             @keydown.enter="translate"
           >
-            <p id="focus" style="width: 100%; height: 1.5rem"></p>
+            <p id="focus"></p>
             <span v-if="showPlaceholder" style="color: rgba(0, 0, 0, 0.8)"
               >记事吧...</span
             >
@@ -85,7 +85,7 @@ export default {
       showLeftMenu: false,
       appHeaderTitle: "未命名-1",
       showPlaceholder: true,
-      writeTipOffsetTop: 16,
+      writeTipOffsetTop: 20,
       writeWords: {
         char: 0,
         paragraph: 0,
@@ -140,13 +140,122 @@ export default {
       }
       this.writeWords.char = countChar;
       this.writeWords.paragraph = countParagraph;
-      console.log(text.match(/\s/g), text.match(/\r\n/g));
+      // console.log(text.match(/\s/g), text.match(/\r\n/g));
       // this.writeWords.word =
       //   text.match(/\s/g).length + text.match(/\n/g).length;
 
       // 编辑器逻辑
-      // console.log(e);
+      function translate(selection, range) {
+        let mark = marked(selection.baseNode.nodeValue)
+          .trim()
+          .replace(/^\<p\>/, "")
+          .replace(/\<\/p\>$/, "");
+        console.log(mark);
+        let a = 5;
+        let b = selection.baseNode;
+
+        while (a > 0 && b) {
+          if (
+            b.parentElement.nodeType === 1 &&
+            b.parentElement.id === "focus"
+          ) {
+            console.log("找到啦");
+            range.setStart(
+              // selection.baseNode,
+              // selection.baseNode.nodeValue.length
+              b.parentElement,
+              0
+            );
+            range.setEnd(
+              // selection.baseNode,
+              // selection.baseNode.nodeValue.length
+              b.parentElement,
+              0
+            );
+            b.parentElement.innerHTML = mark;
+
+            console.log(
+              selection.baseNode,
+              selection.baseNode.nodeValue.length,
+              mark
+            );
+            break;
+          }
+          a--;
+          b = b.parentElement;
+        }
+      }
+
       let selection = document.getSelection();
+      let range = selection.getRangeAt(0);
+      let baseNode = selection.baseNode;
+      let tagName = ""; // 要翻译成的标签名
+      let isTs = false; // 是否可以翻译了
+      console.log(range);
+
+      if (baseNode.nodeValue) {
+        let nodeValue = baseNode.nodeValue.trim();
+        if (nodeValue.match(/^\#/)) {
+          isTs = true;
+        }
+        // *
+        if (nodeValue.match(/^\*\*\*.+\*\*\*/)) {
+          isTs = true;
+        } else if (nodeValue.match(/^\*\*[^\*,\n]+\*\*/)) {
+          isTs = true;
+        } else if (nodeValue.match(/^\*[^\*,\n]+\*/)) {
+          isTs = true;
+        }
+        console.log(nodeValue, nodeValue.match(/^\*\*\*.+\*\*\*/));
+        if (isTs && range.endOffset === selection.baseNode.nodeValue.length) {
+          // 只有光标在语句最后面才会执行翻译
+          translate(selection, range);
+        }
+      }
+
+      //  -------------------
+      // if (
+      //   selection.baseNode.nodeValue &&
+      //   range.endOffset === selection.baseNode.nodeValue.length
+      // ) {
+      //   let mark = marked(selection.baseNode.nodeValue);
+
+      //   console.log(mark);
+      //   let a = 5;
+      //   let b = selection.baseNode;
+      //   while (a > 0 && b) {
+      //     if (
+      //       b.parentElement.nodeType === 1 &&
+      //       b.parentElement.id === "focus"
+      //     ) {
+      //       console.log("找到啦");
+      //       b.parentElement.innerHTML = mark;
+      //       range.setStart(
+      //         selection.baseNode,
+      //         selection.baseNode.nodeValue.length
+      //       );
+      //       range.setEnd(
+      //         selection.baseNode,
+      //         selection.baseNode.nodeValue.length
+      //       );
+      //       console.log(
+      //         selection.baseNode,
+      //         selection.baseNode.nodeValue.length,
+      //         mark
+      //       );
+      //       break;
+      //     }
+      //     a--;
+      //     b = b.parentElement;
+      //   }
+      //   // if (!mark.match(/^\<p\>/)) {
+      //   // let newEl = document.createElement("h1");
+      //   // newEl.className = "clean";
+      //   // this.$refs.editor.replaceChild(newEl, baseNode.parentElement);
+      //   // }
+      // }
+      //  -------------------
+
       // let range = selection.getRangeAt(0);
       // this.selection = selection;
       // this.range = selection.getRangeAt(0);
@@ -160,9 +269,9 @@ export default {
       //   selection.baseNode,
       //   e.target.children[e.target.children.length - 1].offsetTop
       // );
-      this.writeTipOffsetTop = selection.baseNode
-        ? selection.baseNode.offsetTop - 72
-        : selection.baseNode.parentNode.offsetTop;
+      // this.writeTipOffsetTop = selection.baseNode
+      //   ? selection.baseNode.offsetTop - 72
+      //   : selection.baseNode.parentElement.offsetTop;
       // this.writeTipOffsetTop =
       //   this.focusNode.parentNode.offsetTo - 70 > 0
       //     ? Math.abs(this.focusNode.parentNode.offsetTop)
@@ -180,7 +289,7 @@ export default {
       //   this.writeTipOffsetTop = selection.baseNode.parentNode.offsetTop - 16;
       // }
 
-      console.log(selection);
+      // console.log(selection);
 
       // if (
       //   selection.anchorNode.parentNode &&
@@ -211,7 +320,7 @@ export default {
 
       console.log(e.target.offsetTop);
       this.writeTipOffsetTop =
-        e.target.offsetTop - 70 > 0 ? Math.abs(e.target.offsetTop - 70) : 22;
+        e.target.offsetTop - 70 > 0 ? Math.abs(e.target.offsetTop - 70) : 20;
     },
     editorFocus() {
       // 隐藏Placeholder
@@ -324,22 +433,53 @@ export default {
     translate(e) {
       e.preventDefault();
 
-      function insterAfter(newElement, targetElement) {
-        let parent = targetElement.parentNode;
-        if (parent.lastChild.isEqualNode(targetElement)) {
-          parent.appendChild(newElement);
-        } else {
-          parent.insertBefore(newElement, targetElement.nextSibling);
-        }
-      }
       console.log($("#editor"));
+      // let domArr = document.getElementById("editor").children;
+      // for (let i = 0; i < domArr.length; i++) {
+      //   console.log(domArr[i]);
+      //   domArr[i].addEventListener("blur", function (e) {
+      //     console.error("554");
+      //   });
+      //   if (!domArr[i].onBlur) {
+      //     domArr[i].onBlur = function () {
+      //       console.log("哈哈哈哈");
+      //     };
+      //   }
+      // }
       // 简约模式不进行md翻译
-      if (this.$store.state.global.model === 0) {
-        return;
-      }
-
+      // if (this.$store.state.global.model === 0) {
+      //   return;
+      // }
+      console.log(this.$refs);
       let selection = document.getSelection();
-
+      let range = selection.getRangeAt(0);
+      let index = 1;
+      // range.setEndAfter(selection.baseNode.parentElement);
+      // range.setStartAfter(selection.baseNode.parentElement);
+      console.log(123, selection);
+      let a = 5;
+      let b = selection.baseNode;
+      while (a > 0 && b) {
+        if (b.parentElement.nodeType === 1 && b.parentElement.id === "focus") {
+          console.log("找到啦");
+          b.parentElement.id = "temp";
+          let p = document.createElement("p");
+          p.id = "focus";
+          $("#temp").after(p);
+          b.parentElement.id = "focus";
+          range.setStart(p, 0);
+          range.setEnd(p, 0);
+          // console.log(
+          //   selection.baseNode,
+          //   selection.baseNode.nodeValue.length,
+          //   mark
+          // );
+          break;
+        }
+        a--;
+        b = b.parentElement;
+      }
+      // --------
       // console.log("id", selection.baseNode.nodeType);
       // if (
       //   selection.baseNode.nodeType !== 3 ||
@@ -352,79 +492,62 @@ export default {
       //   return;
       // }
 
-      console.log(555, selection.baseNode.nodeValue.match(/\#{1,6}/g));
-      // selection.baseNode.innerHTML = marked(this.selection.baseNode.innerText);
-      let range = selection.getRangeAt(0);
+      // ------------------
 
-      // 根据#的个数判断h标题
-      let header = "";
-      try {
-        let arr = selection.baseNode.nodeValue.match(/\#/g);
-        for (let i = 0; i < arr.length; i++) {
-          header += "#";
-          if (i === arr.length - 1) {
-            header += " ";
-          }
-        }
-      } catch (err) {}
+      //   console.log(555, selection.baseNode.nodeValue.match(/\#{1,6}/g));
+      //   let range = selection.getRangeAt(0);
 
-      console.log("111111111", selection);
+      //   // 根据#的个数判断h标题
+      //   let header = "";
+      //   try {
+      //     let arr = selection.baseNode.nodeValue.match(/\#/g);
+      //     for (let i = 0; i < arr.length; i++) {
+      //       header += "#";
+      //       if (i === arr.length - 1) {
+      //         header += " ";
+      //       }
+      //     }
+      //   } catch (err) {}
 
-      console.log(selection);
-      // if (selection.baseNode.nodeType === 1) {
-      //   selection.baseNode.innerHTML = marked(selection.baseNode.nodeValue, {
+      //   console.log("111111111", selection);
+
+      //   console.log(selection);
+
+      //   let newEl = document.createElement("div");
+      //   let focus = document.getElementById("focus");
+      //   newEl.className = "clean";
+      //   newEl.innerHTML = marked(selection.baseNode.nodeValue, {
       //     headerPrefix: header,
       //   });
-      //   console.log("我是1");
-      // } else {
-      let newEl = document.createElement("div");
-      let focus = document.getElementById("focus");
-      newEl.className = "clean";
-      newEl.innerHTML = marked(selection.baseNode.nodeValue, {
-        headerPrefix: header,
-      });
-      console.log(newEl.innerHTML);
-      // range.insertNode(newEl);
+      //   console.log("marked", newEl.innerHTML);
 
-      // if (!selection.baseNode.parentElement.id) {
-      //   selection.baseNode.parentElement.parentElement.insertBefore(
-      //     newEl,
-      //     selection.baseNode.parentElement
-      //   );
-      // } else {
-
-      // selection.baseNode.parentNode.removeChild(selection.baseNode);
-
-      // document.getElementById("focus").innerText = "";
-      // range.setStart(this.$refs.editor, 2);
-      // range.setEnd(this.$refs.editor, 2);
-      if (
-        (selection.baseNode.nodeType === 1 &&
-          selection.baseNode.isEqualNode(focus)) ||
-        selection.baseNode.parentElement === focus
-      ) {
-        console.log("我是1");
-        this.$refs.editor.insertBefore(newEl, focus);
-        selection.baseNode.parentNode.removeChild(selection.baseNode);
-        range.selectNodeContents(focus);
-      } else {
-        console.log("我是2");
-        let div = document.createElement("div");
-        div.className = "clean";
-        this.$refs.editor.insertBefore(
-          div,
-          selection.baseNode.parentElement.parentElement.nextElementSibling
-        );
-        range.selectNodeContents(div);
-      }
-      // }
+      //   if (
+      //     (selection.baseNode.nodeType === 1 &&
+      //       selection.baseNode.isEqualNode(focus)) ||
+      //     selection.baseNode.parentElement === focus
+      //   ) {
+      //     console.log("我是1");
+      //     this.$refs.editor.insertBefore(newEl, focus);
+      //     selection.baseNode.parentNode.removeChild(selection.baseNode);
+      //     range.selectNodeContents(focus);
+      //   } else {
+      //     console.log("我是2");
+      //     let div = document.createElement("div");
+      //     div.className = "clean";
+      //     this.$refs.editor.insertBefore(
+      //       div,
+      //       selection.baseNode.parentElement.parentElement.nextElementSibling
+      //     );
+      //     range.selectNodeContents(div);
+      //   }
     },
   },
-  watch: {},
 };
 </script>
 
 <style lang="scss" >
+@import "@/theme/common.scss";
+
 .main {
   display: flex;
 }
